@@ -16,8 +16,10 @@ REQUIRED_CHANNEL_ID = os.getenv("REQUIRED_CHANNEL_ID", "@aivora_uz")
 # Admin username for contact
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "ABDRFV_11")
 
-# Webhook settings for Render
-WEBHOOK_HOST = os.getenv("WEBHOOK_HOST", "")  # e.g. https://your-app.onrender.com
+# Webhook settings for Render (Render avtomatik URL bergan bo'lsa, o'shani ham oladi)
+_host = os.getenv("WEBHOOK_HOST") or os.getenv("RENDER_EXTERNAL_URL", "")
+WEBHOOK_HOST = _host.rstrip('/') if _host else ""
+
 WEBHOOK_PATH = f"/webhook/{BOT_TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}" if WEBHOOK_HOST else ""
 
