@@ -69,3 +69,36 @@ def main():
 
 if __name__ == "__main__":
     main()
+def main():
+    # Startup va Shutdown hodisalarini ro'yxatdan o'tkazish
+    dp.startup.register(on_startup)
+    
+    app = web.Application()
+
+    # Webhook bo'lsa - Webhook rejimida, bo'lmasa - Polling + Dummy Server rejimida ishlaydi
+    if WEBHOOK_HOST:
+        webhook_requests_handler = SimpleRequestHandler(
+            dispatcher=dp,
+            bot=bot,
+        )
+        webhook_requests_handler.register(app, path=WEBHOOK_PATH)
+        setup_application(app, dp, bot=bot)
+        web.run_app(app, host="0.0.0.0", port=int(PORT))
+    else:
+        # Gar WEBHOOK kiritilmagan bo'lsa ham Render port xatosisiz polling qilishi uchun:
+        async def dummy_handler(request):
+            return web.Response(text="Bot runs in Polling mode")
+            
+        app.router.add_get("/", dummy_handler)
+        
+        async def run_all():
+            runner = web.AppRunner(app)
+            await runner.setup()
+            site = web.TCPSite(runner, "0.0.0.0", int(PORT))
+            await site.start()
+            await dp.start_polling(bot)
+
+        asyncio.run(run_all())
+
+if __name__ == "__main__":
+    main()
