@@ -32,6 +32,11 @@ async def on_shutdown(bot: Bot):
     logger.info("Bot stopped")
 
 
+# Render va brauzerlar tekshirishi uchun (404 xatosini oldini oladi)
+async def handle_root(request):
+    return web.Response(text="Bot is online and running!")
+
+
 def main():
     if not BOT_TOKEN or BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
         logger.error("BOT_TOKEN o'rnatilmagan! Environment variable qo'shing.")
@@ -47,58 +52,31 @@ def main():
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 
+    app = web.Application()
+    
+    # Asosiy sahifa yo'nalishi (Render 200 OK kodi olishi uchun)
+    app.router.add_get("/", handle_root)
+
     if WEBHOOK_HOST:
         # Webhook mode for Render
-        app = web.Application()
         webhook_handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
         webhook_handler.register(app, path=WEBHOOK_PATH)
         setup_application(app, dp, bot=bot)
 
         logger.info(f"Starting webhook server on port {PORT}")
-        web.run_app(app, host="0.0.0.0", port=PORT)
-    else:
-        # Polling mode for local testing
-        async def run_polling():
-            await init_db()
-            await bot.delete_webhook(drop_pending_updates=True)
-            logger.info("Starting polling...")
-            await dp.start_polling(bot)
-
-        asyncio.run(run_polling())
-
-
-if __name__ == "__main__":
-    main()
-def main():
-    # Startup va Shutdown hodisalarini ro'yxatdan o'tkazish
-    dp.startup.register(on_startup)
-    
-    app = web.Application()
-
-    # Webhook bo'lsa - Webhook rejimida, bo'lmasa - Polling + Dummy Server rejimida ishlaydi
-    if WEBHOOK_HOST:
-        webhook_requests_handler = SimpleRequestHandler(
-            dispatcher=dp,
-            bot=bot,
-        )
-        webhook_requests_handler.register(app, path=WEBHOOK_PATH)
-        setup_application(app, dp, bot=bot)
         web.run_app(app, host="0.0.0.0", port=int(PORT))
     else:
-        # Gar WEBHOOK kiritilmagan bo'lsa ham Render port xatosisiz polling qilishi uchun:
-        async def dummy_handler(request):
-            return web.Response(text="Bot runs in Polling mode")
-            
-        app.router.add_get("/", dummy_handler)
-        
+        # Polling mode + Dummy Server (Local hamda Render'da port muammosiz ishlash uchun)
         async def run_all():
             runner = web.AppRunner(app)
             await runner.setup()
             site = web.TCPSite(runner, "0.0.0.0", int(PORT))
             await site.start()
+            logger.info("Starting polling mode with dummy HTTP port...")
             await dp.start_polling(bot)
 
         asyncio.run(run_all())
+
 
 if __name__ == "__main__":
     main()
